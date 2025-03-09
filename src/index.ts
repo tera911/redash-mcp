@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import * as dotenv from 'dotenv';
-import { redashClient } from "./redashClient.js";
+import { redashClient, CreateQueryRequest, UpdateQueryRequest } from "./redashClient.js";
 import { logger, LogLevel } from "./logger.js";
 
 // Load environment variables
@@ -20,7 +20,7 @@ dotenv.config();
 const server = new Server(
   {
     name: "redash-mcp",
-    version: "1.0.0"
+    version: "1.1.0"
   },
   {
     capabilities: {
@@ -34,6 +34,190 @@ const server = new Server(
 logger.info('Starting Redash MCP server...');
 
 // ----- Tools Implementation -----
+
+// Tool: get-query
+const getQuerySchema = z.object({
+  queryId: z.number()
+});
+
+async function getQuery(params: z.infer<typeof getQuerySchema>) {
+  try {
+    const { queryId } = params;
+    const query = await redashClient.getQuery(queryId);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(query, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    logger.error(`Error getting query ${params.queryId}: ${error}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Error getting query ${params.queryId}: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+}
+
+// Tool: create-query
+const createQuerySchema = z.object({
+  name: z.string(),
+  data_source_id: z.number(),
+  query: z.string(),
+  description: z.string().optional(),
+  options: z.any().optional(),
+  schedule: z.any().optional(),
+  tags: z.array(z.string()).optional()
+});
+
+async function createQuery(params: z.infer<typeof createQuerySchema>) {
+  try {
+    // Convert params to CreateQueryRequest
+    const queryData: CreateQueryRequest = {
+      name: params.name,
+      data_source_id: params.data_source_id,
+      query: params.query,
+      description: params.description,
+      options: params.options,
+      schedule: params.schedule,
+      tags: params.tags
+    };
+    
+    const result = await redashClient.createQuery(queryData);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    logger.error(`Error creating query: ${error}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Error creating query: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+}
+
+// Tool: update-query
+const updateQuerySchema = z.object({
+  queryId: z.number(),
+  name: z.string().optional(),
+  data_source_id: z.number().optional(),
+  query: z.string().optional(),
+  description: z.string().optional(),
+  options: z.any().optional(),
+  schedule: z.any().optional(),
+  tags: z.array(z.string()).optional(),
+  is_archived: z.boolean().optional(),
+  is_draft: z.boolean().optional()
+});
+
+async function updateQuery(params: z.infer<typeof updateQuerySchema>) {
+  try {
+    const { queryId, ...updateData } = params;
+    
+    // Convert params to UpdateQueryRequest
+    const queryData: UpdateQueryRequest = updateData;
+    
+    const result = await redashClient.updateQuery(queryId, queryData);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    logger.error(`Error updating query ${params.queryId}: ${error}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Error updating query ${params.queryId}: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+}
+
+// Tool: archive-query
+const archiveQuerySchema = z.object({
+  queryId: z.number()
+});
+
+async function archiveQuery(params: z.infer<typeof archiveQuerySchema>) {
+  try {
+    const { queryId } = params;
+    const result = await redashClient.archiveQuery(queryId);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    logger.error(`Error archiving query ${params.queryId}: ${error}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Error archiving query ${params.queryId}: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+}
+
+// Tool: list-data-sources
+async function listDataSources() {
+  try {
+    const dataSources = await redashClient.getDataSources();
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(dataSources, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    logger.error(`Error listing data sources: ${error}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Error listing data sources: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+}
 
 // Tool: list-queries
 const listQueriesSchema = z.object({
@@ -298,6 +482,73 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
+        name: "get-query",
+        description: "Get details of a specific query",
+        inputSchema: {
+          type: "object",
+          properties: {
+            queryId: { type: "number", description: "ID of the query to get" }
+          },
+          required: ["queryId"]
+        }
+      },
+      {
+        name: "create-query",
+        description: "Create a new query in Redash",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Name of the query" },
+            data_source_id: { type: "number", description: "ID of the data source to use" },
+            query: { type: "string", description: "SQL query text" },
+            description: { type: "string", description: "Description of the query" },
+            options: { type: "object", description: "Query options" },
+            schedule: { type: "object", description: "Query schedule" },
+            tags: { type: "array", items: { type: "string" }, description: "Tags for the query" }
+          },
+          required: ["name", "data_source_id", "query"]
+        }
+      },
+      {
+        name: "update-query",
+        description: "Update an existing query in Redash",
+        inputSchema: {
+          type: "object",
+          properties: {
+            queryId: { type: "number", description: "ID of the query to update" },
+            name: { type: "string", description: "New name of the query" },
+            data_source_id: { type: "number", description: "ID of the data source to use" },
+            query: { type: "string", description: "SQL query text" },
+            description: { type: "string", description: "Description of the query" },
+            options: { type: "object", description: "Query options" },
+            schedule: { type: "object", description: "Query schedule" },
+            tags: { type: "array", items: { type: "string" }, description: "Tags for the query" },
+            is_archived: { type: "boolean", description: "Whether the query is archived" },
+            is_draft: { type: "boolean", description: "Whether the query is a draft" }
+          },
+          required: ["queryId"]
+        }
+      },
+      {
+        name: "archive-query",
+        description: "Archive (soft-delete) a query in Redash",
+        inputSchema: {
+          type: "object",
+          properties: {
+            queryId: { type: "number", description: "ID of the query to archive" }
+          },
+          required: ["queryId"]
+        }
+      },
+      {
+        name: "list-data-sources",
+        description: "List all available data sources in Redash",
+        inputSchema: {
+          type: "object",
+          properties: {}
+        }
+      },
+      {
         name: "execute-query",
         description: "Execute a Redash query and return results",
         inputSchema: {
@@ -358,6 +609,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case "list-queries":
         return await listQueries(listQueriesSchema.parse(args));
+      
+      case "get-query":
+        return await getQuery(getQuerySchema.parse(args));
+
+      case "create-query":
+        return await createQuery(createQuerySchema.parse(args));
+
+      case "update-query":
+        return await updateQuery(updateQuerySchema.parse(args));
+
+      case "archive-query":
+        return await archiveQuery(archiveQuerySchema.parse(args));
+
+      case "list-data-sources":
+        return await listDataSources();
       
       case "execute-query":
         return await executeQuery(executeQuerySchema.parse(args));

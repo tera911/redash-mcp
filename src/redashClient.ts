@@ -20,6 +20,29 @@ export interface RedashQuery {
   visualizations: RedashVisualization[];
 }
 
+// New interfaces for query creation and update
+export interface CreateQueryRequest {
+  name: string;
+  data_source_id: number;
+  query: string;
+  description?: string;
+  options?: any;
+  schedule?: any;
+  tags?: string[];
+}
+
+export interface UpdateQueryRequest {
+  name?: string;
+  data_source_id?: number;
+  query?: string;
+  description?: string;
+  options?: any;
+  schedule?: any;
+  tags?: string[];
+  is_archived?: boolean;
+  is_draft?: boolean;
+}
+
 export interface RedashVisualization {
   id: number;
   type: string;
@@ -122,6 +145,56 @@ export class RedashClient {
     } catch (error) {
       console.error(`Error fetching query ${queryId}:`, error);
       throw new Error(`Failed to fetch query ${queryId} from Redash`);
+    }
+  }
+
+  // Create a new query
+  async createQuery(queryData: CreateQueryRequest): Promise<RedashQuery> {
+    try {
+      logger.debug(`Creating new query: ${JSON.stringify(queryData)}`);
+      const response = await this.client.post('/api/queries', queryData);
+      logger.debug(`Created query with ID: ${response.data.id}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Error creating query: ${error}`);
+      throw new Error(`Failed to create query: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Update an existing query
+  async updateQuery(queryId: number, queryData: UpdateQueryRequest): Promise<RedashQuery> {
+    try {
+      logger.debug(`Updating query ${queryId}: ${JSON.stringify(queryData)}`);
+      const response = await this.client.post(`/api/queries/${queryId}`, queryData);
+      logger.debug(`Updated query ${queryId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Error updating query ${queryId}: ${error}`);
+      throw new Error(`Failed to update query ${queryId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Archive (soft delete) a query
+  async archiveQuery(queryId: number): Promise<{ success: boolean }> {
+    try {
+      logger.debug(`Archiving query ${queryId}`);
+      await this.client.delete(`/api/queries/${queryId}`);
+      logger.debug(`Archived query ${queryId}`);
+      return { success: true };
+    } catch (error) {
+      logger.error(`Error archiving query ${queryId}: ${error}`);
+      throw new Error(`Failed to archive query ${queryId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // List available data sources
+  async getDataSources(): Promise<any[]> {
+    try {
+      const response = await this.client.get('/api/data_sources');
+      return response.data;
+    } catch (error) {
+      logger.error(`Error fetching data sources: ${error}`);
+      throw new Error('Failed to fetch data sources from Redash');
     }
   }
 

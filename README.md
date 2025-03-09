@@ -7,7 +7,8 @@ Model Context Protocol (MCP) server for integrating Redash with AI assistants li
 - Connect to Redash instances via the Redash API
 - List available queries and dashboards as resources
 - Execute queries and retrieve results
-- Create visualizations of query results
+- Create and manage queries (create, update, archive)
+- List data sources for query creation
 - Get dashboard details and visualizations
 
 ## Prerequisites
@@ -17,54 +18,61 @@ Model Context Protocol (MCP) server for integrating Redash with AI assistants li
 - Access to a Redash instance
 - Redash API key
 
+## Environment Variables
+
+The server requires the following environment variables:
+
+- `REDASH_URL`: Your Redash instance URL (e.g., https://redash.example.com)
+- `REDASH_API_KEY`: Your Redash API key
+
+Optional variables:
+- `REDASH_TIMEOUT`: Timeout for API requests in milliseconds (default: 30000)
+- `REDASH_MAX_RESULTS`: Maximum number of results to return (default: 1000)
+
 ## Installation
 
-1. Clone this repository
-2. Install dependencies: `npm install`
-3. Create a `.env` file with your Redash configuration (see `.env.example`)
-4. Build the project: `npm run build`
-5. Start the server: `npm start`
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/suthio/redash-mcp.git
+   cd redash-mcp
+   ```
 
-## Direct Usage with npx
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-After the package is published to NPM, you can run it directly with npx without installing it globally:
+3. Create a `.env` file with your Redash configuration:
+   ```
+   REDASH_URL=https://your-redash-instance.com
+   REDASH_API_KEY=your_api_key
+   ```
 
-```bash
-# Using environment variables directly
-REDASH_URL=https://your-redash-instance.com REDASH_API_KEY=your_key npx @suthio/redash-mcp
+4. Build the project:
+   ```bash
+   npm run build
+   ```
 
-# Or using a .env file in current directory
-# Create a .env file first, then:
-npx @suthio/redash-mcp
-```
+5. Start the server:
+   ```bash
+   npm start
+   ```
 
-## Usage with Claude
+## Usage with Claude for Desktop
 
-After installing the package globally or publishing it to NPM, you can configure Claude for Desktop to use this MCP server by adding it to your `claude_desktop_config.json`:
+To use this MCP server with Claude for Desktop, configure it in your Claude for Desktop configuration file:
 
-```json
-{
-  "mcpServers": {
-    "redash": {
-      "command": "npx",
-      "args": ["-y", "@suthio/redash-mcp"],
-      "env": {
-        "REDASH_API_KEY": "your-api-key",
-        "REDASH_URL": "https://your-redash-instance.com"
-      }
-    }
-  }
-}
-```
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-If you're running from a local build instead of NPM, you can configure it like this:
+Add the following configuration (edit paths as needed):
 
 ```json
 {
   "mcpServers": {
     "redash": {
       "command": "node",
-      "args": ["/path/to/redash-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/redash-mcp/dist/index.js"],
       "env": {
         "REDASH_API_KEY": "your-api-key",
         "REDASH_URL": "https://your-redash-instance.com"
@@ -76,37 +84,33 @@ If you're running from a local build instead of NPM, you can configure it like t
 
 ## Available Tools
 
-- `list-queries`: List all available queries
+### Query Management
+- `list-queries`: List all available queries in Redash
+- `get-query`: Get details of a specific query 
+- `create-query`: Create a new query in Redash
+- `update-query`: Update an existing query in Redash
+- `archive-query`: Archive (soft-delete) a query
+- `list-data-sources`: List all available data sources
+
+### Query Execution
 - `execute-query`: Execute a query and return results
+
+### Dashboard Management
 - `list-dashboards`: List all available dashboards
-- `get-dashboard`: Get dashboard details and visualizations
-- `get-visualization`: Get visualization details for a query
+- `get-dashboard`: Get dashboard details and visualizations 
+- `get-visualization`: Get details of a specific visualization
 
 ## Development
 
-Run in development mode: `npm run dev`
-
-## Publishing to NPM
-
-To publish the package to NPM:
-
-1. Create an NPM account if you don't have one: https://www.npmjs.com/signup
-2. Login to NPM from the command line: `npm login`
-3. Build the package: `npm run build`
-4. Publish the package: `npm publish --access public`
-
-After publishing, the package can be executed directly with npx:
-
+Run in development mode:
 ```bash
-npx @suthio/redash-mcp
+npm run dev
 ```
 
-Or installed globally:
+## Version History
 
-```bash
-npm install -g @suthio/redash-mcp
-redash-mcp
-```
+- v1.1.0: Added query management functionality (create, update, archive)
+- v1.0.0: Initial release
 
 ## License
 
