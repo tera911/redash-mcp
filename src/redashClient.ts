@@ -151,12 +151,48 @@ export class RedashClient {
   // Create a new query
   async createQuery(queryData: CreateQueryRequest): Promise<RedashQuery> {
     try {
-      logger.debug(`Creating new query: ${JSON.stringify(queryData)}`);
-      const response = await this.client.post('/api/queries', queryData);
-      logger.debug(`Created query with ID: ${response.data.id}`);
-      return response.data;
+      logger.info(`Creating new query: ${JSON.stringify(queryData)}`);
+      logger.info(`Sending request to: ${this.baseUrl}/api/queries`);
+      
+      try {
+        // Ensure we're passing the exact parameters the Redash API expects
+        const requestData = {
+          name: queryData.name,
+          data_source_id: queryData.data_source_id,
+          query: queryData.query,
+          description: queryData.description || '',
+          options: queryData.options || {},
+          schedule: queryData.schedule || null,
+          tags: queryData.tags || []
+        };
+        
+        logger.info(`Request data: ${JSON.stringify(requestData)}`);
+        logger.info(`Request headers: ${JSON.stringify(this.client.defaults.headers)}`);
+        const response = await this.client.post('/api/queries', requestData);
+        logger.info(`Created query with ID: ${response.data.id}`);
+        return response.data;
+      } catch (axiosError: any) {
+        // Log detailed axios error information
+        logger.error(`Axios error in createQuery - Status: ${axiosError.response?.status || 'unknown'}`);
+        logger.error(`Response data: ${JSON.stringify(axiosError.response?.data || {}, null, 2)}`);
+        logger.error(`Request config: ${JSON.stringify({
+          url: axiosError.config?.url,
+          method: axiosError.config?.method,
+          headers: axiosError.config?.headers,
+          data: axiosError.config?.data
+        }, null, 2)}`);
+        
+        if (axiosError.response) {
+          throw new Error(`Redash API error (${axiosError.response.status}): ${JSON.stringify(axiosError.response.data)}`);
+        } else if (axiosError.request) {
+          throw new Error(`No response received from Redash API: ${axiosError.message}`);
+        } else {
+          throw axiosError;
+        }
+      }
     } catch (error) {
-      logger.error(`Error creating query: ${error}`);
+      logger.error(`Error creating query: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(`Stack trace: ${error instanceof Error && error.stack ? error.stack : 'No stack trace available'}`);
       throw new Error(`Failed to create query: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -165,9 +201,44 @@ export class RedashClient {
   async updateQuery(queryId: number, queryData: UpdateQueryRequest): Promise<RedashQuery> {
     try {
       logger.debug(`Updating query ${queryId}: ${JSON.stringify(queryData)}`);
-      const response = await this.client.post(`/api/queries/${queryId}`, queryData);
-      logger.debug(`Updated query ${queryId}`);
-      return response.data;
+      
+      try {
+        // Construct a request payload with only the fields we want to update
+        const requestData: Record<string, any> = {};
+        
+        if (queryData.name !== undefined) requestData.name = queryData.name;
+        if (queryData.data_source_id !== undefined) requestData.data_source_id = queryData.data_source_id;
+        if (queryData.query !== undefined) requestData.query = queryData.query;
+        if (queryData.description !== undefined) requestData.description = queryData.description;
+        if (queryData.options !== undefined) requestData.options = queryData.options;
+        if (queryData.schedule !== undefined) requestData.schedule = queryData.schedule;
+        if (queryData.tags !== undefined) requestData.tags = queryData.tags;
+        if (queryData.is_archived !== undefined) requestData.is_archived = queryData.is_archived;
+        if (queryData.is_draft !== undefined) requestData.is_draft = queryData.is_draft;
+        
+        logger.debug(`Request data for update: ${JSON.stringify(requestData)}`);
+        const response = await this.client.post(`/api/queries/${queryId}`, requestData);
+        logger.debug(`Updated query ${queryId}`);
+        return response.data;
+      } catch (axiosError: any) {
+        // Log detailed axios error information
+        logger.error(`Axios error in updateQuery - Status: ${axiosError.response?.status || 'unknown'}`);
+        logger.error(`Response data: ${JSON.stringify(axiosError.response?.data || {}, null, 2)}`);
+        logger.error(`Request config: ${JSON.stringify({
+          url: axiosError.config?.url,
+          method: axiosError.config?.method,
+          headers: axiosError.config?.headers,
+          data: axiosError.config?.data
+        }, null, 2)}`);
+        
+        if (axiosError.response) {
+          throw new Error(`Redash API error (${axiosError.response.status}): ${JSON.stringify(axiosError.response.data)}`);
+        } else if (axiosError.request) {
+          throw new Error(`No response received from Redash API: ${axiosError.message}`);
+        } else {
+          throw axiosError;
+        }
+      }
     } catch (error) {
       logger.error(`Error updating query ${queryId}: ${error}`);
       throw new Error(`Failed to update query ${queryId}: ${error instanceof Error ? error.message : String(error)}`);

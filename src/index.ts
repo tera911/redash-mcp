@@ -80,18 +80,22 @@ const createQuerySchema = z.object({
 
 async function createQuery(params: z.infer<typeof createQuerySchema>) {
   try {
-    // Convert params to CreateQueryRequest
+    logger.debug(`Create query params: ${JSON.stringify(params)}`);
+    
+    // Convert params to CreateQueryRequest with proper defaults
     const queryData: CreateQueryRequest = {
       name: params.name,
       data_source_id: params.data_source_id,
       query: params.query,
-      description: params.description,
-      options: params.options,
-      schedule: params.schedule,
-      tags: params.tags
+      description: params.description || '',
+      options: params.options || {},
+      schedule: params.schedule || null,
+      tags: params.tags || []
     };
     
+    logger.debug(`Calling redashClient.createQuery with data: ${JSON.stringify(queryData)}`);
     const result = await redashClient.createQuery(queryData);
+    logger.debug(`Create query result: ${JSON.stringify(result)}`);
     
     return {
       content: [
@@ -102,7 +106,7 @@ async function createQuery(params: z.infer<typeof createQuerySchema>) {
       ]
     };
   } catch (error) {
-    logger.error(`Error creating query: ${error}`);
+    logger.error(`Error creating query: ${error instanceof Error ? error.message : String(error)}`);
     return {
       isError: true,
       content: [
@@ -133,10 +137,25 @@ async function updateQuery(params: z.infer<typeof updateQuerySchema>) {
   try {
     const { queryId, ...updateData } = params;
     
-    // Convert params to UpdateQueryRequest
-    const queryData: UpdateQueryRequest = updateData;
+    logger.debug(`Update query ${queryId} params: ${JSON.stringify(updateData)}`);
     
+    // Convert params to UpdateQueryRequest - only include non-undefined fields
+    const queryData: UpdateQueryRequest = {};
+    
+    // Only add fields that are defined
+    if (updateData.name !== undefined) queryData.name = updateData.name;
+    if (updateData.data_source_id !== undefined) queryData.data_source_id = updateData.data_source_id;
+    if (updateData.query !== undefined) queryData.query = updateData.query;
+    if (updateData.description !== undefined) queryData.description = updateData.description;
+    if (updateData.options !== undefined) queryData.options = updateData.options;
+    if (updateData.schedule !== undefined) queryData.schedule = updateData.schedule;
+    if (updateData.tags !== undefined) queryData.tags = updateData.tags;
+    if (updateData.is_archived !== undefined) queryData.is_archived = updateData.is_archived;
+    if (updateData.is_draft !== undefined) queryData.is_draft = updateData.is_draft;
+    
+    logger.debug(`Calling redashClient.updateQuery with data: ${JSON.stringify(queryData)}`);
     const result = await redashClient.updateQuery(queryId, queryData);
+    logger.debug(`Update query result: ${JSON.stringify(result)}`);
     
     return {
       content: [
@@ -147,7 +166,7 @@ async function updateQuery(params: z.infer<typeof updateQuerySchema>) {
       ]
     };
   } catch (error) {
-    logger.error(`Error updating query ${params.queryId}: ${error}`);
+    logger.error(`Error updating query ${params.queryId}: ${error instanceof Error ? error.message : String(error)}`);
     return {
       isError: true,
       content: [
@@ -605,39 +624,83 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   
+  logger.debug(`Tool request received: ${name} with args: ${JSON.stringify(args)}`);
+  
   try {
+    // 最初に型チェック用の事前検証を行い、想定されたスキーマと一致しない場合のエラーを早期に補足する
+    // これにより、例えば create-query と execute-query のような似た名前のツール間の混同を防ぐ
+    if (name === "create-query") {
+      try {
+        logger.debug(`Validating create-query schema`);
+        const validatedArgs = createQuerySchema.parse(args);
+        logger.debug(`Schema validation passed for create-query: ${JSON.stringify(validatedArgs)}`);
+        return await createQuery(validatedArgs);
+      } catch (validationError) {
+        logger.error(`Schema validation failed for create-query: ${validationError}`);
+        return {
+          isError: true,
+          content: [{
+            type: "text",
+            text: `Invalid parameters for create-query: ${validationError instanceof Error ? validationError.message : String(validationError)}`
+          }]
+        };
+      }
+    } else if (name === "update-query") {
+      try {
+        logger.debug(`Validating update-query schema`);
+        const validatedArgs = updateQuerySchema.parse(args);
+        logger.debug(`Schema validation passed for update-query: ${JSON.stringify(validatedArgs)}`);
+        return await updateQuery(validatedArgs);
+      } catch (validationError) {
+        logger.error(`Schema validation failed for update-query: ${validationError}`);
+        return {
+          isError: true,
+          content: [{
+            type: "text",
+            text: `Invalid parameters for update-query: ${validationError instanceof Error ? validationError.message : String(validationError)}`
+          }]
+        };
+      }
+    }
+
+    // 他のツールのための switch 文
     switch (name) {
       case "list-queries":
+        logger.debug(`Handling list-queries`);
         return await listQueries(listQueriesSchema.parse(args));
       
       case "get-query":
+        logger.debug(`Handling get-query`);
         return await getQuery(getQuerySchema.parse(args));
 
-      case "create-query":
-        return await createQuery(createQuerySchema.parse(args));
-
-      case "update-query":
-        return await updateQuery(updateQuerySchema.parse(args));
+      // create-query と update-query は上の if-else で処理済み
 
       case "archive-query":
+        logger.debug(`Handling archive-query`);
         return await archiveQuery(archiveQuerySchema.parse(args));
 
       case "list-data-sources":
+        logger.debug(`Handling list-data-sources`);
         return await listDataSources();
       
       case "execute-query":
+        logger.debug(`Handling execute-query`);
         return await executeQuery(executeQuerySchema.parse(args));
       
       case "list-dashboards":
+        logger.debug(`Handling list-dashboards`);
         return await listDashboards(listDashboardsSchema.parse(args));
       
       case "get-dashboard":
+        logger.debug(`Handling get-dashboard`);
         return await getDashboard(getDashboardSchema.parse(args));
       
       case "get-visualization":
+        logger.debug(`Handling get-visualization`);
         return await getVisualization(getVisualizationSchema.parse(args));
       
       default:
+        logger.error(`Unknown tool requested: ${name}`);
         return {
           isError: true,
           content: [
@@ -649,7 +712,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
     }
   } catch (error) {
-    console.error(`Error executing tool ${name}:`, error);
+    logger.error(`Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`);
+    if (error instanceof z.ZodError) {
+      logger.error(`Validation error details: ${JSON.stringify(error.errors)}`);
+    }
     return {
       isError: true,
       content: [
