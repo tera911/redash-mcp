@@ -71,8 +71,11 @@ Add the following configuration (edit paths as needed):
 {
   "mcpServers": {
     "redash": {
-      "command": "node",
-      "args": ["/absolute/path/to/redash-mcp/dist/index.js"],
+      "command": "npx",
+      "args": [
+         "-y",
+         "@suthio/redash-mcp"
+      ],
       "env": {
         "REDASH_API_KEY": "your-api-key",
         "REDASH_URL": "https://your-redash-instance.com"
