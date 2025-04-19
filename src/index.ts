@@ -35,7 +35,7 @@ logger.info('Starting Redash MCP server...');
 
 // ----- Tools Implementation -----
 
-// Tool: get-query
+// Tool: get_query
 const getQuerySchema = z.object({
   queryId: z.number()
 });
@@ -67,7 +67,7 @@ async function getQuery(params: z.infer<typeof getQuerySchema>) {
   }
 }
 
-// Tool: create-query
+// Tool: create_query
 const createQuerySchema = z.object({
   name: z.string(),
   data_source_id: z.number(),
@@ -119,7 +119,7 @@ async function createQuery(params: z.infer<typeof createQuerySchema>) {
   }
 }
 
-// Tool: update-query
+// Tool: update_query
 const updateQuerySchema = z.object({
   queryId: z.number(),
   name: z.string().optional(),
@@ -179,7 +179,7 @@ async function updateQuery(params: z.infer<typeof updateQuerySchema>) {
   }
 }
 
-// Tool: archive-query
+// Tool: archive_query
 const archiveQuerySchema = z.object({
   queryId: z.number()
 });
@@ -211,7 +211,7 @@ async function archiveQuery(params: z.infer<typeof archiveQuerySchema>) {
   }
 }
 
-// Tool: list-data-sources
+// Tool: list_data_sources
 async function listDataSources() {
   try {
     const dataSources = await redashClient.getDataSources();
@@ -238,7 +238,7 @@ async function listDataSources() {
   }
 }
 
-// Tool: list-queries
+// Tool: list_queries
 const listQueriesSchema = z.object({
   page: z.number().optional().default(1),
   pageSize: z.number().optional().default(25)
@@ -272,7 +272,7 @@ async function listQueries(params: z.infer<typeof listQueriesSchema>) {
   }
 }
 
-// Tool: execute-query
+// Tool: execute_query
 const executeQuerySchema = z.object({
   queryId: z.number(),
   parameters: z.record(z.any()).optional()
@@ -305,7 +305,7 @@ async function executeQuery(params: z.infer<typeof executeQuerySchema>) {
   }
 }
 
-// Tool: list-dashboards
+// Tool: list_dashboards
 const listDashboardsSchema = z.object({
   page: z.number().optional().default(1),
   pageSize: z.number().optional().default(25)
@@ -338,7 +338,7 @@ async function listDashboards(params: z.infer<typeof listDashboardsSchema>) {
   }
 }
 
-// Tool: get-dashboard
+// Tool: get_dashboard
 const getDashboardSchema = z.object({
   dashboardId: z.number()
 });
@@ -370,7 +370,7 @@ async function getDashboard(params: z.infer<typeof getDashboardSchema>) {
   }
 }
 
-// Tool: get-visualization
+// Tool: get_visualization
 const getVisualizationSchema = z.object({
   visualizationId: z.number()
 });
@@ -490,7 +490,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "list-queries",
+        name: "list_queries",
         description: "List all available queries in Redash",
         inputSchema: {
           type: "object",
@@ -501,7 +501,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "get-query",
+        name: "get_query",
         description: "Get details of a specific query",
         inputSchema: {
           type: "object",
@@ -512,7 +512,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "create-query",
+        name: "create_query",
         description: "Create a new query in Redash",
         inputSchema: {
           type: "object",
@@ -529,7 +529,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "update-query",
+        name: "update_query",
         description: "Update an existing query in Redash",
         inputSchema: {
           type: "object",
@@ -549,7 +549,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "archive-query",
+        name: "archive_query",
         description: "Archive (soft-delete) a query in Redash",
         inputSchema: {
           type: "object",
@@ -560,7 +560,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "list-data-sources",
+        name: "list_data_sources",
         description: "List all available data sources in Redash",
         inputSchema: {
           type: "object",
@@ -568,7 +568,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "execute-query",
+        name: "execute_query",
         description: "Execute a Redash query and return results",
         inputSchema: {
           type: "object",
@@ -584,7 +584,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "list-dashboards",
+        name: "list_dashboards",
         description: "List all available dashboards in Redash",
         inputSchema: {
           type: "object",
@@ -595,7 +595,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "get-dashboard",
+        name: "get_dashboard",
         description: "Get details of a specific dashboard",
         inputSchema: {
           type: "object",
@@ -606,7 +606,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "get-visualization",
+        name: "get_visualization",
         description: "Get details of a specific visualization",
         inputSchema: {
           type: "object",
@@ -627,76 +627,76 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   logger.debug(`Tool request received: ${name} with args: ${JSON.stringify(args)}`);
   
   try {
-    // 最初に型チェック用の事前検証を行い、想定されたスキーマと一致しない場合のエラーを早期に補足する
-    // これにより、例えば create-query と execute-query のような似た名前のツール間の混同を防ぐ
-    if (name === "create-query") {
+    // First perform type checking for early validation to catch errors when the provided schema doesn't match expectations
+    // This prevents confusion between similar tool names like create_query and execute_query
+    if (name === "create_query") {
       try {
-        logger.debug(`Validating create-query schema`);
+        logger.debug(`Validating create_query schema`);
         const validatedArgs = createQuerySchema.parse(args);
-        logger.debug(`Schema validation passed for create-query: ${JSON.stringify(validatedArgs)}`);
+        logger.debug(`Schema validation passed for create_query: ${JSON.stringify(validatedArgs)}`);
         return await createQuery(validatedArgs);
       } catch (validationError) {
-        logger.error(`Schema validation failed for create-query: ${validationError}`);
+        logger.error(`Schema validation failed for create_query: ${validationError}`);
         return {
           isError: true,
           content: [{
             type: "text",
-            text: `Invalid parameters for create-query: ${validationError instanceof Error ? validationError.message : String(validationError)}`
+            text: `Invalid parameters for create_query: ${validationError instanceof Error ? validationError.message : String(validationError)}`
           }]
         };
       }
-    } else if (name === "update-query") {
+    } else if (name === "update_query") {
       try {
-        logger.debug(`Validating update-query schema`);
+        logger.debug(`Validating update_query schema`);
         const validatedArgs = updateQuerySchema.parse(args);
-        logger.debug(`Schema validation passed for update-query: ${JSON.stringify(validatedArgs)}`);
+        logger.debug(`Schema validation passed for update_query: ${JSON.stringify(validatedArgs)}`);
         return await updateQuery(validatedArgs);
       } catch (validationError) {
-        logger.error(`Schema validation failed for update-query: ${validationError}`);
+        logger.error(`Schema validation failed for update_query: ${validationError}`);
         return {
           isError: true,
           content: [{
             type: "text",
-            text: `Invalid parameters for update-query: ${validationError instanceof Error ? validationError.message : String(validationError)}`
+            text: `Invalid parameters for update_query: ${validationError instanceof Error ? validationError.message : String(validationError)}`
           }]
         };
       }
     }
 
-    // 他のツールのための switch 文
+    // Switch statement for other tools
     switch (name) {
-      case "list-queries":
-        logger.debug(`Handling list-queries`);
+      case "list_queries":
+        logger.debug(`Handling list_queries`);
         return await listQueries(listQueriesSchema.parse(args));
       
-      case "get-query":
-        logger.debug(`Handling get-query`);
+      case "get_query":
+        logger.debug(`Handling get_query`);
         return await getQuery(getQuerySchema.parse(args));
 
-      // create-query と update-query は上の if-else で処理済み
+      // create_query and update_query are already handled in the if-else above
 
-      case "archive-query":
-        logger.debug(`Handling archive-query`);
+      case "archive_query":
+        logger.debug(`Handling archive_query`);
         return await archiveQuery(archiveQuerySchema.parse(args));
 
-      case "list-data-sources":
-        logger.debug(`Handling list-data-sources`);
+      case "list_data_sources":
+        logger.debug(`Handling list_data_sources`);
         return await listDataSources();
       
-      case "execute-query":
-        logger.debug(`Handling execute-query`);
+      case "execute_query":
+        logger.debug(`Handling execute_query`);
         return await executeQuery(executeQuerySchema.parse(args));
       
-      case "list-dashboards":
-        logger.debug(`Handling list-dashboards`);
+      case "list_dashboards":
+        logger.debug(`Handling list_dashboards`);
         return await listDashboards(listDashboardsSchema.parse(args));
       
-      case "get-dashboard":
-        logger.debug(`Handling get-dashboard`);
+      case "get_dashboard":
+        logger.debug(`Handling get_dashboard`);
         return await getDashboard(getDashboardSchema.parse(args));
       
-      case "get-visualization":
-        logger.debug(`Handling get-visualization`);
+      case "get_visualization":
+        logger.debug(`Handling get_visualization`);
         return await getVisualization(getVisualizationSchema.parse(args));
       
       default:
