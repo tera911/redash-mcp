@@ -2,8 +2,8 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { 
-  ListToolsRequestSchema, 
+import {
+  ListToolsRequestSchema,
   CallToolRequestSchema,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema
@@ -44,7 +44,7 @@ async function getQuery(params: z.infer<typeof getQuerySchema>) {
   try {
     const { queryId } = params;
     const query = await redashClient.getQuery(queryId);
-    
+
     return {
       content: [
         {
@@ -81,7 +81,7 @@ const createQuerySchema = z.object({
 async function createQuery(params: z.infer<typeof createQuerySchema>) {
   try {
     logger.debug(`Create query params: ${JSON.stringify(params)}`);
-    
+
     // Convert params to CreateQueryRequest with proper defaults
     const queryData: CreateQueryRequest = {
       name: params.name,
@@ -92,11 +92,11 @@ async function createQuery(params: z.infer<typeof createQuerySchema>) {
       schedule: params.schedule || null,
       tags: params.tags || []
     };
-    
+
     logger.debug(`Calling redashClient.createQuery with data: ${JSON.stringify(queryData)}`);
     const result = await redashClient.createQuery(queryData);
     logger.debug(`Create query result: ${JSON.stringify(result)}`);
-    
+
     return {
       content: [
         {
@@ -136,12 +136,12 @@ const updateQuerySchema = z.object({
 async function updateQuery(params: z.infer<typeof updateQuerySchema>) {
   try {
     const { queryId, ...updateData } = params;
-    
+
     logger.debug(`Update query ${queryId} params: ${JSON.stringify(updateData)}`);
-    
+
     // Convert params to UpdateQueryRequest - only include non-undefined fields
     const queryData: UpdateQueryRequest = {};
-    
+
     // Only add fields that are defined
     if (updateData.name !== undefined) queryData.name = updateData.name;
     if (updateData.data_source_id !== undefined) queryData.data_source_id = updateData.data_source_id;
@@ -152,11 +152,11 @@ async function updateQuery(params: z.infer<typeof updateQuerySchema>) {
     if (updateData.tags !== undefined) queryData.tags = updateData.tags;
     if (updateData.is_archived !== undefined) queryData.is_archived = updateData.is_archived;
     if (updateData.is_draft !== undefined) queryData.is_draft = updateData.is_draft;
-    
+
     logger.debug(`Calling redashClient.updateQuery with data: ${JSON.stringify(queryData)}`);
     const result = await redashClient.updateQuery(queryId, queryData);
     logger.debug(`Update query result: ${JSON.stringify(result)}`);
-    
+
     return {
       content: [
         {
@@ -188,7 +188,7 @@ async function archiveQuery(params: z.infer<typeof archiveQuerySchema>) {
   try {
     const { queryId } = params;
     const result = await redashClient.archiveQuery(queryId);
-    
+
     return {
       content: [
         {
@@ -215,7 +215,7 @@ async function archiveQuery(params: z.infer<typeof archiveQuerySchema>) {
 async function listDataSources() {
   try {
     const dataSources = await redashClient.getDataSources();
-    
+
     return {
       content: [
         {
@@ -241,14 +241,15 @@ async function listDataSources() {
 // Tool: list_queries
 const listQueriesSchema = z.object({
   page: z.number().optional().default(1),
-  pageSize: z.number().optional().default(25)
+  pageSize: z.number().optional().default(25),
+  q: z.string().optional()
 });
 
 async function listQueries(params: z.infer<typeof listQueriesSchema>) {
   try {
-    const { page, pageSize } = params;
-    const queries = await redashClient.getQueries(page, pageSize);
-    
+    const { page, pageSize, q } = params;
+    const queries = await redashClient.getQueries(page, pageSize, q);
+
     logger.debug(`Listed ${queries.results.length} queries`);
     return {
       content: [
@@ -282,7 +283,7 @@ async function executeQuery(params: z.infer<typeof executeQuerySchema>) {
   try {
     const { queryId, parameters } = params;
     const result = await redashClient.executeQuery(queryId, parameters);
-    
+
     return {
       content: [
         {
@@ -315,7 +316,7 @@ async function listDashboards(params: z.infer<typeof listDashboardsSchema>) {
   try {
     const { page, pageSize } = params;
     const dashboards = await redashClient.getDashboards(page, pageSize);
-    
+
     return {
       content: [
         {
@@ -347,7 +348,7 @@ async function getDashboard(params: z.infer<typeof getDashboardSchema>) {
   try {
     const { dashboardId } = params;
     const dashboard = await redashClient.getDashboard(dashboardId);
-    
+
     return {
       content: [
         {
@@ -379,7 +380,7 @@ async function getVisualization(params: z.infer<typeof getVisualizationSchema>) 
   try {
     const { visualizationId } = params;
     const visualization = await redashClient.getVisualization(visualizationId);
-    
+
     return {
       content: [
         {
@@ -437,21 +438,21 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 // Read resource content
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
-  
+
   try {
     const match = uri.match(/^redash:\/\/(query|dashboard)\/(\d+)$/);
-    
+
     if (!match) {
       throw new Error(`Invalid resource URI: ${uri}`);
     }
-    
+
     const [, type, id] = match;
     const resourceId = parseInt(id, 10);
-    
+
     if (type === 'query') {
       const query = await redashClient.getQuery(resourceId);
       const result = await redashClient.executeQuery(resourceId);
-      
+
       return {
         contents: [
           {
@@ -466,7 +467,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       };
     } else if (type === 'dashboard') {
       const dashboard = await redashClient.getDashboard(resourceId);
-      
+
       return {
         contents: [
           {
@@ -477,7 +478,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
         ]
       };
     }
-    
+
     throw new Error(`Unsupported resource type: ${type}`);
   } catch (error) {
     console.error(`Error reading resource ${uri}:`, error);
@@ -496,7 +497,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             page: { type: "number", description: "Page number (starts at 1)" },
-            pageSize: { type: "number", description: "Number of results per page" }
+            pageSize: { type: "number", description: "Number of results per page" },
+            q: { type: "string", description: "Search query" }
           }
         }
       },
@@ -574,8 +576,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             queryId: { type: "number", description: "ID of the query to execute" },
-            parameters: { 
-              type: "object", 
+            parameters: {
+              type: "object",
               description: "Parameters to pass to the query (if any)",
               additionalProperties: true
             }
@@ -623,9 +625,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 // Handle tool execution requests
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   logger.debug(`Tool request received: ${name} with args: ${JSON.stringify(args)}`);
-  
+
   try {
     // First perform type checking for early validation to catch errors when the provided schema doesn't match expectations
     // This prevents confusion between similar tool names like create_query and execute_query
@@ -668,7 +670,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list_queries":
         logger.debug(`Handling list_queries`);
         return await listQueries(listQueriesSchema.parse(args));
-      
+
       case "get_query":
         logger.debug(`Handling get_query`);
         return await getQuery(getQuerySchema.parse(args));
@@ -682,23 +684,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list_data_sources":
         logger.debug(`Handling list_data_sources`);
         return await listDataSources();
-      
+
       case "execute_query":
         logger.debug(`Handling execute_query`);
         return await executeQuery(executeQuerySchema.parse(args));
-      
+
       case "list_dashboards":
         logger.debug(`Handling list_dashboards`);
         return await listDashboards(listDashboardsSchema.parse(args));
-      
+
       case "get_dashboard":
         logger.debug(`Handling get_dashboard`);
         return await getDashboard(getDashboardSchema.parse(args));
-      
+
       case "get_visualization":
         logger.debug(`Handling get_visualization`);
         return await getVisualization(getVisualizationSchema.parse(args));
-      
+
       default:
         logger.error(`Unknown tool requested: ${name}`);
         return {
@@ -732,7 +734,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   try {
     const transport = new StdioServerTransport();
-    
+
     logger.info("Starting Redash MCP server...");
     await server.connect(transport);
     logger.setServer(server);
