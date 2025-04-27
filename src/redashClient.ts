@@ -103,7 +103,7 @@ export class RedashClient {
   constructor() {
     this.baseUrl = process.env.REDASH_URL || '';
     this.apiKey = process.env.REDASH_API_KEY || '';
-    
+
     if (!this.baseUrl || !this.apiKey) {
       throw new Error('REDASH_URL and REDASH_API_KEY must be provided in .env file');
     }
@@ -119,12 +119,12 @@ export class RedashClient {
   }
 
   // Get all queries (with pagination)
-  async getQueries(page = 1, pageSize = 25): Promise<{ count: number; page: number; pageSize: number; results: RedashQuery[] }> {
+  async getQueries(page = 1, pageSize = 25, q?: string): Promise<{ count: number; page: number; pageSize: number; results: RedashQuery[] }> {
     try {
       const response = await this.client.get('/api/queries', {
-        params: { page, page_size: pageSize }
+        params: { page, page_size: pageSize, q }
       });
-      
+
       return {
         count: response.data.count,
         page: response.data.page,
@@ -153,7 +153,7 @@ export class RedashClient {
     try {
       logger.info(`Creating new query: ${JSON.stringify(queryData)}`);
       logger.info(`Sending request to: ${this.baseUrl}/api/queries`);
-      
+
       try {
         // Ensure we're passing the exact parameters the Redash API expects
         const requestData = {
@@ -165,7 +165,7 @@ export class RedashClient {
           schedule: queryData.schedule || null,
           tags: queryData.tags || []
         };
-        
+
         logger.info(`Request data: ${JSON.stringify(requestData)}`);
         logger.info(`Request headers: ${JSON.stringify(this.client.defaults.headers)}`);
         const response = await this.client.post('/api/queries', requestData);
@@ -181,7 +181,7 @@ export class RedashClient {
           headers: axiosError.config?.headers,
           data: axiosError.config?.data
         }, null, 2)}`);
-        
+
         if (axiosError.response) {
           throw new Error(`Redash API error (${axiosError.response.status}): ${JSON.stringify(axiosError.response.data)}`);
         } else if (axiosError.request) {
@@ -201,11 +201,11 @@ export class RedashClient {
   async updateQuery(queryId: number, queryData: UpdateQueryRequest): Promise<RedashQuery> {
     try {
       logger.debug(`Updating query ${queryId}: ${JSON.stringify(queryData)}`);
-      
+
       try {
         // Construct a request payload with only the fields we want to update
         const requestData: Record<string, any> = {};
-        
+
         if (queryData.name !== undefined) requestData.name = queryData.name;
         if (queryData.data_source_id !== undefined) requestData.data_source_id = queryData.data_source_id;
         if (queryData.query !== undefined) requestData.query = queryData.query;
@@ -215,7 +215,7 @@ export class RedashClient {
         if (queryData.tags !== undefined) requestData.tags = queryData.tags;
         if (queryData.is_archived !== undefined) requestData.is_archived = queryData.is_archived;
         if (queryData.is_draft !== undefined) requestData.is_draft = queryData.is_draft;
-        
+
         logger.debug(`Request data for update: ${JSON.stringify(requestData)}`);
         const response = await this.client.post(`/api/queries/${queryId}`, requestData);
         logger.debug(`Updated query ${queryId}`);
@@ -230,7 +230,7 @@ export class RedashClient {
           headers: axiosError.config?.headers,
           data: axiosError.config?.data
         }, null, 2)}`);
-        
+
         if (axiosError.response) {
           throw new Error(`Redash API error (${axiosError.response.status}): ${JSON.stringify(axiosError.response.data)}`);
         } else if (axiosError.request) {
@@ -273,12 +273,12 @@ export class RedashClient {
   async executeQuery(queryId: number, parameters?: Record<string, any>): Promise<RedashQueryResult> {
     try {
       const response = await this.client.post(`/api/queries/${queryId}/results`, { parameters });
-      
+
       if (response.data.job) {
         // Query is being executed asynchronously, poll for results
         return await this.pollQueryResults(response.data.job.id);
       }
-      
+
       return response.data;
     } catch (error) {
       console.error(`Error executing query ${queryId}:`, error);
@@ -289,17 +289,17 @@ export class RedashClient {
   // Poll for query execution results
   private async pollQueryResults(jobId: string, timeout = 60000, interval = 1000): Promise<RedashQueryResult> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       try {
         const response = await this.client.get(`/api/jobs/${jobId}`);
-        
+
         if (response.data.job.status === 3) { // Completed
           return response.data.job.result;
         } else if (response.data.job.status === 4) { // Error
           throw new Error(`Query execution failed: ${response.data.job.error}`);
         }
-        
+
         // Wait for the next poll
         await new Promise(resolve => setTimeout(resolve, interval));
       } catch (error) {
@@ -307,7 +307,7 @@ export class RedashClient {
         throw new Error(`Failed to poll for query results (job ${jobId})`);
       }
     }
-    
+
     throw new Error(`Query execution timed out after ${timeout}ms`);
   }
 
@@ -317,7 +317,7 @@ export class RedashClient {
       const response = await this.client.get('/api/dashboards', {
         params: { page, page_size: pageSize }
       });
-      
+
       return {
         count: response.data.count,
         page: response.data.page,
