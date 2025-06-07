@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as dotenv from 'dotenv';
 import { logger } from './logger.js';
 
@@ -281,8 +281,27 @@ export class RedashClient {
 
       return response.data;
     } catch (error) {
-      console.error(`Error executing query ${queryId}:`, error);
-      throw new Error(`Failed to execute query ${queryId}`);
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        logger.error(`Error executing query ${queryId}: ${axiosError.message}`);
+        
+        // Extract detailed error information
+        if (axiosError.response) {
+          const statusCode = axiosError.response.status;
+          const errorData = axiosError.response.data as any;
+          const errorMessage = errorData?.message || errorData?.error || JSON.stringify(errorData);
+          throw new Error(`Failed to execute query ${queryId}: Redash API error (${statusCode}): ${errorMessage}`);
+        } else if (axiosError.request) {
+          throw new Error(`Failed to execute query ${queryId}: No response received from Redash API: ${axiosError.message}`);
+        } else {
+          throw new Error(`Failed to execute query ${queryId}: ${axiosError.message}`);
+        }
+      } else {
+        // Handle non-axios errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error(`Error executing query ${queryId}: ${errorMessage}`);
+        throw new Error(`Failed to execute query ${queryId}: ${errorMessage}`);
+      }
     }
   }
 
@@ -297,14 +316,39 @@ export class RedashClient {
         if (response.data.job.status === 3) { // Completed
           return response.data.job.result;
         } else if (response.data.job.status === 4) { // Error
-          throw new Error(`Query execution failed: ${response.data.job.error}`);
+          const errorDetails = response.data.job.error || 'Unknown error';
+          throw new Error(`Query execution failed: ${errorDetails}`);
         }
 
         // Wait for the next poll
         await new Promise(resolve => setTimeout(resolve, interval));
       } catch (error) {
-        console.error(`Error polling for query results (job ${jobId}):`, error);
-        throw new Error(`Failed to poll for query results (job ${jobId})`);
+        // If this is our own error from status 4, re-throw it as-is
+        if (error instanceof Error && error.message.startsWith('Query execution failed:')) {
+          throw error;
+        }
+        
+        if (axios.isAxiosError(error)) {
+          const axiosError = error as AxiosError;
+          logger.error(`Error polling for query results (job ${jobId}): ${axiosError.message}`);
+          
+          // Extract detailed error information
+          if (axiosError.response) {
+            const statusCode = axiosError.response.status;
+            const errorData = axiosError.response.data as any;
+            const errorMessage = errorData?.message || errorData?.error || JSON.stringify(errorData);
+            throw new Error(`Failed to poll for query results (job ${jobId}): Redash API error (${statusCode}): ${errorMessage}`);
+          } else if (axiosError.request) {
+            throw new Error(`Failed to poll for query results (job ${jobId}): No response received from Redash API: ${axiosError.message}`);
+          } else {
+            throw new Error(`Failed to poll for query results (job ${jobId}): ${axiosError.message}`);
+          }
+        } else {
+          // Handle non-axios errors
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error(`Error polling for query results (job ${jobId}): ${errorMessage}`);
+          throw new Error(`Failed to poll for query results (job ${jobId}): ${errorMessage}`);
+        }
       }
     }
 
