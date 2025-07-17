@@ -314,6 +314,13 @@ export class RedashClient {
         const response = await this.client.get(`/api/jobs/${jobId}`);
 
         if (response.data.job.status === 3) { // Completed
+          // Check if we have a query_result_id (for adhoc queries)
+          if (response.data.job.query_result_id) {
+            logger.debug(`Job completed with query_result_id: ${response.data.job.query_result_id}`);
+            const resultResponse = await this.client.get(`/api/query_results/${response.data.job.query_result_id}`);
+            return resultResponse.data;
+          }
+          // Otherwise, return the result directly (for normal queries)
           return response.data.job.result;
         } else if (response.data.job.status === 4) { // Error
           const errorDetails = response.data.job.error || 'Unknown error';
@@ -393,6 +400,39 @@ export class RedashClient {
     } catch (error) {
       console.error(`Error fetching visualization ${visualizationId}:`, error);
       throw new Error(`Failed to fetch visualization ${visualizationId} from Redash`);
+    }
+  }
+
+  // Execute adhoc query directly using /api/query_results endpoint
+  async executeAdhocQuery(query: string, dataSourceId: number): Promise<RedashQueryResult> {
+    try {
+      logger.info(`Executing adhoc query: ${query.substring(0, 100)}...`);
+
+      // Prepare the request payload
+      const payload = {
+        query: query,
+        data_source_id: dataSourceId,
+        max_age: 0,  // Force fresh results (no cache)
+        apply_auto_limit: true,  // Apply auto limit like in the web version
+        parameters: {}
+      };
+
+      logger.debug(`Sending adhoc query request: ${JSON.stringify(payload)}`);
+
+      // Execute the query directly without creating a query object
+      const response = await this.client.post('/api/query_results', payload);
+
+      // Handle async execution if job is returned
+      if (response.data.job) {
+        logger.debug(`Query is being executed asynchronously, job ID: ${response.data.job.id}`);
+        return await this.pollQueryResults(response.data.job.id);
+      }
+
+      return response.data;
+
+    } catch (error) {
+      logger.error(`Error executing adhoc query: ${error}`);
+      throw new Error(`Failed to execute adhoc query: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

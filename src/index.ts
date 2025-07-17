@@ -403,6 +403,39 @@ async function getVisualization(params: z.infer<typeof getVisualizationSchema>) 
   }
 }
 
+// Tool: execute_adhoc_query
+const executeAdhocQuerySchema = z.object({
+  query: z.string(),
+  dataSourceId: z.number()
+});
+
+async function executeAdhocQuery(params: z.infer<typeof executeAdhocQuerySchema>) {
+  try {
+    const { query, dataSourceId } = params;
+    const result = await redashClient.executeAdhocQuery(query, dataSourceId);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    logger.error(`Error executing adhoc query: ${error}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Error executing adhoc query: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+}
+
 // ----- Resources Implementation -----
 
 // List available resources
@@ -617,6 +650,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["visualizationId"]
         }
+      },
+      {
+        name: "execute_adhoc_query",
+        description: "Execute an ad-hoc query without saving it to Redash. Creates a temporary query that is automatically deleted after execution.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "SQL query to execute" },
+            dataSourceId: { type: "number", description: "ID of the data source to query against" }
+          },
+          required: ["query", "dataSourceId"]
+        }
       }
     ]
   };
@@ -700,6 +745,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "get_visualization":
         logger.debug(`Handling get_visualization`);
         return await getVisualization(getVisualizationSchema.parse(args));
+
+      case "execute_adhoc_query":
+        logger.debug(`Handling execute_adhoc_query`);
+        return await executeAdhocQuery(executeAdhocQuerySchema.parse(args));
 
       default:
         logger.error(`Unknown tool requested: ${name}`);
