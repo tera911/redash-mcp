@@ -1,0 +1,48 @@
+# Configuration for tagpr
+# See: https://github.com/Songmu/tagpr
+
+# The version file path
+versionFile = "package.json"
+
+# The release branch name
+releaseBranch = "main"
+
+# The tag prefix
+tagPrefix = "v"
+
+# Create major version tag (e.g., v1, v2)
+majorVersionTag = false
+
+# Create a release PR
+createReleasePR = true
+
+# Automatically merge the release PR
+autoMergeReleasePR = false
+
+# Use the default PR title
+useDefaultPRTitle = true
+
+# The PR title format
+prTitle = "Prepare for v{{ .Version }}"
+
+# The release commit message format
+releaseCommit = "release v{{ .Version }}"
+
+# Include the changelog in the release body
+includeChangelog = true
+
+# Automatically push the tag
+pushTag = true
+
+# Create a GitHub release
+createRelease = true
+
+# Release title format
+releaseTitle = "v{{ .Version }}"
+
+# Release body template
+releaseBody = |
+  ## What's Changed
+  {{ .Changelog }}
+  
+  **Full Changelog**: https://github.com/suthio/redash-mcp/compare/{{ .PreviousTag }}...{{ .CurrentTag }}
