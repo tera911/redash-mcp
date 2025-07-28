@@ -659,7 +659,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "create_query",
-        description: "Create a new query in Redash",
+        description: "Create a new query in Redash. IMPORTANT: For temporary queries, testing, or one-time analysis, use execute_adhoc_query instead. Only use create_query when you need to save the query for future use, scheduling, dashboards, or sharing with others.",
         inputSchema: {
           type: "object",
           properties: {
@@ -764,11 +764,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "execute_adhoc_query",
-        description: "Execute an ad-hoc query without saving it to Redash. Creates a temporary query that is automatically deleted after execution.",
+        description: "Execute a temporary SQL query without saving it. Perfect for: data validation (COUNT, DISTINCT), debugging queries, schema exploration (SHOW TABLES/COLUMNS, DESCRIBE), sampling data (SELECT with LIMIT), testing JOINs, checking aggregations (SUM, AVG, GROUP BY), performance testing, testing queries before saving, or any one-time data analysis. The query is NOT saved to Redash.",
         inputSchema: {
           type: "object",
           properties: {
-            query: { type: "string", description: "SQL query to execute" },
+            query: { type: "string", description: "SQL query to execute temporarily (e.g., SELECT *, DESCRIBE table, SHOW TABLES)" },
             dataSourceId: { type: "number", description: "ID of the data source to query against" }
           },
           required: ["query", "dataSourceId"]
