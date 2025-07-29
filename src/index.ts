@@ -406,13 +406,14 @@ async function getVisualization(params: z.infer<typeof getVisualizationSchema>) 
 // Tool: execute_adhoc_query
 const executeAdhocQuerySchema = z.object({
   query: z.string(),
-  dataSourceId: z.number()
+  dataSourceId: z.number(),
+  applyAutoLimit: z.boolean().optional().default(true)
 });
 
 async function executeAdhocQuery(params: z.infer<typeof executeAdhocQuerySchema>) {
   try {
-    const { query, dataSourceId } = params;
-    const result = await redashClient.executeAdhocQuery(query, dataSourceId);
+    const { query, dataSourceId, applyAutoLimit } = params;
+    const result = await redashClient.executeAdhocQuery(query, dataSourceId, applyAutoLimit);
 
     return {
       content: [
@@ -769,7 +770,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             query: { type: "string", description: "SQL query to execute temporarily (e.g., SELECT *, DESCRIBE table, SHOW TABLES)" },
-            dataSourceId: { type: "number", description: "ID of the data source to query against" }
+            dataSourceId: { type: "number", description: "ID of the data source to query against" },
+            applyAutoLimit: { type: "boolean", description: "Whether to apply auto limit to query results (default: true)" }
           },
           required: ["query", "dataSourceId"]
         }

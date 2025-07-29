@@ -420,7 +420,7 @@ export class RedashClient {
   }
 
   // Execute adhoc query directly using /api/query_results endpoint
-  async executeAdhocQuery(query: string, dataSourceId: number): Promise<RedashQueryResult> {
+  async executeAdhocQuery(query: string, dataSourceId: number, applyAutoLimit: boolean = true): Promise<RedashQueryResult> {
     try {
       logger.info(`Executing adhoc query: ${query.substring(0, 100)}...`);
 
@@ -429,7 +429,7 @@ export class RedashClient {
         query: query,
         data_source_id: dataSourceId,
         max_age: 0,  // Force fresh results (no cache)
-        apply_auto_limit: true,  // Apply auto limit like in the web version
+        apply_auto_limit: applyAutoLimit,  // Apply auto limit (default: true)
         parameters: {}
       };
 
