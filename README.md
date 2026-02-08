@@ -32,6 +32,23 @@ The server requires the following environment variables:
 Optional variables:
 - `REDASH_TIMEOUT`: Timeout for API requests in milliseconds (default: 30000)
 - `REDASH_MAX_RESULTS`: Maximum number of results to return (default: 1000)
+- `REDASH_EXTRA_HEADERS`: Extra HTTP headers to include with every Redash request. Accepts either a JSON object string or a semicolon/comma-separated list of `key=value` pairs.
+
+Examples:
+
+JSON (recommended):
+```
+REDASH_EXTRA_HEADERS='{"CF-Access-Client-Id":"<client_id>","CF-Access-Client-Secret":"<client_secret>"}'
+```
+
+Key/value list:
+```
+REDASH_EXTRA_HEADERS=CF-Access-Client-Id=<client_id>;CF-Access-Client-Secret=<client_secret>
+```
+
+Notes:
+- The `Authorization` header is managed by the server (`Key <REDASH_API_KEY>`) and cannot be overridden.
+- All extra headers are added to every request made to Redash.
 
 ## Installation
 
@@ -50,6 +67,8 @@ Optional variables:
    ```
    REDASH_URL=https://your-redash-instance.com
    REDASH_API_KEY=your_api_key
+   # Optional: Cloudflare Access (or other gateway) headers
+   # REDASH_EXTRA_HEADERS='{"CF-Access-Client-Id":"<client_id>","CF-Access-Client-Secret":"<client_secret>"}'
    ```
 
 4. Build the project:
@@ -102,6 +121,7 @@ Add the following configuration (edit paths as needed):
 ### Query Execution
 - `execute-query`: Execute a query and return results
 - `execute-adhoc-query`: Execute an ad-hoc query without saving it to Redash
+- `get-query-results-csv`: Get query results in CSV format (supports optional refresh for latest data)
 
 ### Dashboard Management
 - `list-dashboards`: List all available dashboards
@@ -118,6 +138,35 @@ Add the following configuration (edit paths as needed):
 Run in development mode:
 ```bash
 npm run dev
+```
+
+## Testing
+
+### Unit Tests
+
+```bash
+npm test
+```
+
+### E2E Tests
+
+```bash
+npm run e2e:test
+```
+
+E2E tests use these default values (can be overridden with environment variables):
+- `REDASH_URL`: https://demo.redash.io
+- `REDASH_API_KEY`: test_api_key
+
+Override example:
+```bash
+REDASH_URL=https://your-instance.com REDASH_API_KEY=your_key npm run e2e:test
+```
+
+### Manual Testing
+
+```bash
+npm run inspector
 ```
 
 ## Version History
