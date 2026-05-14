@@ -6,6 +6,26 @@ Model Context Protocol (MCP) server for integrating Redash with AI assistants li
   <img width="380" height="200" src="https://glama.ai/mcp/servers/j9bl90s3tw/badge" alt="Redash Server MCP server" />
 </a>
 
+## このForkについて (Mirror Fork Notes)
+
+このリポジトリは [`suthio/redash-mcp`](https://github.com/suthio/redash-mcp) のミラーフォークで、upstreamを随時取り込みつつ以下のローカル改造を維持しています。コンフリクト発生時はローカル改造を優先します。
+
+### パッケージ名
+`@tera911/redash-mcp-mirror` として公開（upstream: `@suthio/redash-mcp`）。
+
+### `execute_adhoc_query` に `applyAutoLimit` パラメータを追加
+Redashの "Apply Auto Limit"（SELECTに `LIMIT 1000` を自動付与する安全装置）を引数で切り替えられるようにしています。upstreamは常に `true` ハードコード。
+
+- 型: `boolean` (optional, default: `true`)
+- `false` を渡すと auto limit が無効になり、1000件を超える行を取得できる
+- 集計クエリやスキーマ探索では実害なし。生データを大量に抜きたいケースで `false` を指定する
+
+### ツール description の詳細化
+LLM が `create_query` と `execute_adhoc_query` を使い分けやすいよう、ツール説明を拡張：
+
+- `create_query`: 「保存・スケジュール・ダッシュボード用途のときのみ使う。一時的な分析は `execute_adhoc_query` を使うこと」と明記
+- `execute_adhoc_query`: COUNT / DISTINCT、スキーマ探索（SHOW TABLES, DESCRIBE）、JOIN検証、集計（SUM / AVG / GROUP BY）など想定ユースケースを列挙
+
 ## Features
 
 - Connect to Redash instances via the Redash API
@@ -33,6 +53,7 @@ Optional variables:
 - `REDASH_TIMEOUT`: Timeout for API requests in milliseconds (default: 30000)
 - `REDASH_MAX_RESULTS`: Maximum number of results to return (default: 1000)
 - `REDASH_EXTRA_HEADERS`: Extra HTTP headers to include with every Redash request. Accepts either a JSON object string or a semicolon/comma-separated list of `key=value` pairs.
+- `REDASH_SOCKS_PROXY`: SOCKS proxy URL for routing requests through a proxy (e.g., `socks5h://localhost:1080`). Use `socks5h://` (with `h`) to delegate DNS resolution to the proxy, which is required for internal hostnames that don't resolve on the local machine.
 
 Examples:
 

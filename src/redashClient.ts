@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as dotenv from 'dotenv';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 import { logger } from './logger.js';
 
 dotenv.config();
@@ -282,14 +283,23 @@ export class RedashClient {
       delete extraHeaders['authorization'];
     }
 
-    this.client = axios.create({
+    const axiosConfig: Record<string, unknown> = {
       baseURL: this.baseUrl,
       headers: {
         ...defaultHeaders,
         ...extraHeaders,
       },
       timeout: parseInt(process.env.REDASH_TIMEOUT || '30000')
-    });
+    };
+
+    const socksProxy = process.env.REDASH_SOCKS_PROXY;
+    if (socksProxy) {
+      const agent = new SocksProxyAgent(socksProxy);
+      axiosConfig.httpAgent = agent;
+      axiosConfig.httpsAgent = agent;
+    }
+
+    this.client = axios.create(axiosConfig);
   }
 
   // Parse extra headers from env var `REDASH_EXTRA_HEADERS`.
@@ -385,7 +395,7 @@ export class RedashClient {
         logger.error(`Request config: ${JSON.stringify({
           url: axiosError.config?.url,
           method: axiosError.config?.method,
-          headers: axiosError.config?.headers,
+
           data: axiosError.config?.data
         }, null, 2)}`);
 
@@ -434,7 +444,7 @@ export class RedashClient {
         logger.error(`Request config: ${JSON.stringify({
           url: axiosError.config?.url,
           method: axiosError.config?.method,
-          headers: axiosError.config?.headers,
+
           data: axiosError.config?.data
         }, null, 2)}`);
 
@@ -596,6 +606,19 @@ export class RedashClient {
     } catch (error) {
       console.error(`Error fetching dashboard ${dashboardId}:`, error);
       throw new Error(`Failed to fetch dashboard ${dashboardId} from Redash`);
+    }
+  }
+
+  // Get a specific dashboard by slug
+  async getDashboardBySlug(slug: string): Promise<RedashDashboard> {
+    try {
+      const response = await this.client.get(`/api/dashboards/${slug}`, {
+        params: { legacy: null }
+      });
+      return response.data;
+    } catch (error) {
+      logger.error(`Error fetching dashboard by slug '${slug}': ${error}`);
+      throw new Error(`Failed to fetch dashboard by slug '${slug}' from Redash`);
     }
   }
 

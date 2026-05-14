@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.0.13](https://github.com/suthio/redash-mcp/compare/v0.0.12...v0.0.13) - 2026-03-26
+- Add get_dashboard_by_slug tool for slug-based dashboard lookup by @ryo-imai-bit in https://github.com/suthio/redash-mcp/pull/41
+- Add Dependabot for automated npm and GitHub Actions updates by @suthio in https://github.com/suthio/redash-mcp/pull/37
+
+## [v0.0.12](https://github.com/suthio/redash-mcp/compare/v0.0.11...v0.0.12) - 2026-03-19
+- Add npm publish to tagpr workflow by @suthio in https://github.com/suthio/redash-mcp/pull/38
+
+## [v0.0.11](https://github.com/suthio/redash-mcp/compare/v0.0.10...v0.0.11) - 2026-03-09
+- Add SOCKS proxy support by @suthio in https://github.com/suthio/redash-mcp/pull/34
+- fix: use z.coerce.number() to handle string-typed numeric params from MCP clients by @strotgen in https://github.com/suthio/redash-mcp/pull/35
+
+## [v0.0.10](https://github.com/suthio/redash-mcp/compare/v0.0.9...v0.0.10) - 2026-03-05
+- Fix API key leakage in error logs (fixes #1) by @deemoowoor in https://github.com/suthio/redash-mcp/pull/32
+
+## [v0.0.9](https://github.com/suthio/redash-mcp/compare/v0.0.8...v0.0.9) - 2026-02-07
+- Add Dashboard, Alert, Widget, Query Snippet APIs by @dtaniwaki in https://github.com/suthio/redash-mcp/pull/27
+
 ## [v0.0.8](https://github.com/suthio/redash-mcp/compare/v0.0.7...v0.0.8) - 2026-01-13
 - Add tests by @dtaniwaki in https://github.com/suthio/redash-mcp/pull/25
 
