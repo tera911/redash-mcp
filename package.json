@@ -1,5 +1,5 @@
 {
-  "name": "@suthio/redash-mcp",
+  "name": "@tera911/redash-mcp-mirror",
   "version": "0.0.13",
   "description": "MCP server for Redash integration",
   "type": "module",
